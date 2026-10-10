@@ -2,11 +2,15 @@ local _, F = ...
 local M=F.Model
 local S=F.Safe
 local unpack=unpack or table.unpack
+F.TransFlag={{91/255,206/255,250/255},{245/255,169/255,184/255},{1,1,1},{245/255,169/255,184/255},{91/255,206/255,250/255}}
 F.Themes={
  purple={name='DuckMoo Purple',bg={.065,.04,.09},panel={.105,.07,.14},button={.20,.12,.28},hover={.30,.19,.41},accent={.72,.45,1},text={.96,.92,1},muted={.73,.65,.83}},
- light={name='Light mode',bg={.89,.87,1},panel={.76,.87,1},button={1,.78,.87},hover={.88,.72,1},accent={.43,.22,.70},text={.14,.10,.24},muted={.30,.24,.43}},
+ gunmetal={name='Gunmetal',bg={.075,.078,.11},panel={.13,.135,.18},button={.18,.18,.25},hover={.24,.23,.33},accent={.65,.53,.89},text={.94,.94,.98},muted={.69,.71,.80}},
+ plum={name='Classic plum',bg={36/255,19/255,34/255},sidebar={50/255,27/255,48/255},panel={57/255,32/255,57/255},button={87/255,49/255,73/255},hover={115/255,65/255,94/255},accent={231/255,169/255,202/255},text={255/255,240/255,250/255},muted={226/255,195/255,216/255}},
+ light={name='Light mode - warm pastels',bg={247/255,214/255,172/255},sidebar={241/255,195/255,173/255},panel={255/255,233/255,181/255},button={242/255,188/255,180/255},hover={227/255,173/255,203/255},accent={166/255,77/255,89/255},text={70/255,40/255,44/255},muted={89/255,57/255,61/255}},
  blizzard={name='Azeroth',bg={.055,.055,.06},panel={.10,.10,.11},button={.19,.15,.08},hover={.30,.24,.12},accent={.9,.72,.32},text={1,.94,.80},muted={.70,.66,.56}},
- trans={name='Trans pride',bg={.98,.77,.83},panel={.70,.88,.98},button={.99,.83,.88},hover={.98,.67,.76},accent={.83,.28,.52},text={.15,.12,.24},muted={.27,.28,.42},stripes={{.36,.81,.98},{.96,.65,.73},{1,1,1},{.96,.65,.73},{.36,.81,.98}}},
+ trans={name='Trans pride',bg={91/255,206/255,250/255},sidebar={245/255,169/255,184/255},panel={245/255,169/255,184/255},button={91/255,206/255,250/255},hover={245/255,169/255,184/255},accent={255/255,255/255,255/255},text={14/255,19/255,31/255},muted={36/255,48/255,64/255},stripes=F.TransFlag},
+ translight={name='Trans pride - dusk',bg={22/255,47/255,66/255},sidebar={64/255,38/255,54/255},panel={35/255,72/255,97/255},button={97/255,54/255,71/255},hover={117/255,66/255,86/255},accent={255/255,255/255,255/255},text={255/255,255/255,255/255},muted={226/255,211/255,222/255},stripes=F.TransFlag},
  lesbian={name='Lesbian pride',bg={.12,.055,.09},panel={.19,.075,.13},button={.32,.11,.22},hover={.43,.15,.30},accent={1,.54,.30},text={1,.94,.96},muted={.94,.65,.77},stripes={{.84,.18,.02},{1,.60,.32},{1,1,1},{.82,.38,.64},{.64,.02,.38}}},
  teal={name='Moonlit teal',bg={.035,.09,.10},panel={.055,.14,.16},button={.09,.24,.25},hover={.13,.32,.34},accent={.30,.85,.80},text={.90,1,.98},muted={.59,.78,.76}},
  crimson={name='Crimson',bg={.09,.03,.035},panel={.15,.045,.055},button={.26,.07,.10},hover={.37,.11,.14},accent={.94,.32,.40},text={1,.93,.92},muted={.81,.61,.61}},
@@ -17,16 +21,17 @@ F.themeTexts={};F.surfaces={}
 function F.ApplyTheme()
  local t=theme();local alpha=F.db.settings.backgroundAlpha or .92
  for _,f in ipairs(F.surfaces)do
-  local color=f._themeButton and t.button or f==F.frame and t.bg or t.panel
+  local color=f._themeButton and (f._active and t.hover or t.button) or f._sidebar and (t.sidebar or t.panel) or f==F.frame and t.bg or t.panel
   f:SetBackdropColor(color[1],color[2],color[3],alpha)
   f:SetBackdropBorderColor(t.accent[1],t.accent[2],t.accent[3],f._active and 1 or 0)
  end
  for _,f in ipairs(F.themeTexts)do local color=f._fixedColor or (f._muted and t.muted or t.text);f:SetTextColor(color[1],color[2],color[3])end
- for _,input in pairs({F.rosterSearch,F.notePanel and F.notePanel.edit,F.tagPicker and F.tagPicker.input,F.choice and F.choice.search})do input:SetTextColor(t.text[1],t.text[2],t.text[3])end
+ for _,input in pairs({F.rosterSearch,F.notePanel and F.notePanel.edit,F.tagPicker and F.tagPicker.input,F.choice and F.choice.search,F.viewEditor and F.viewEditor.edit})do input:SetTextColor(t.text[1],t.text[2],t.text[3])end
  if F.frame and F.frame.stripes then
   for i,texture in ipairs(F.frame.stripes)do
    local color=t.stripes and t.stripes[i] or t.accent
    texture:SetVertexColor(color[1],color[2],color[3],1)
+   texture:SetShown(t.stripes~=nil or i==1)
   end
  end
 end
@@ -94,14 +99,19 @@ local function button(parent,text,x,y,width,action)
     b._active=false;b._caption:SetWidth(width-10);b._caption:SetWordWrap(false)
     b:SetSize(width,24);b:SetPoint('TOPLEFT',x,y);b:SetText(text);b:SetScript('OnClick',action)
     b:SetScript('OnMouseDown',function(self)local c=theme().hover;self:SetBackdropColor(c[1],c[2],c[3],F.db.settings.backgroundAlpha or .92)end)
-    b:SetScript('OnMouseUp',function(self)local c=theme().button;self:SetBackdropColor(c[1],c[2],c[3],F.db.settings.backgroundAlpha or .92)end)
+    b:SetScript('OnMouseUp',function(self)local c=self._active and theme().hover or theme().button;self:SetBackdropColor(c[1],c[2],c[3],F.db.settings.backgroundAlpha or .92)end)
     b:SetBackdropColor(.18,.12,.26,.97);b:SetBackdropBorderColor(.50,.32,.70,0)
     b:SetScript('OnEnter',function(self)local c=theme().hover;self:SetBackdropColor(c[1],c[2],c[3],F.db.settings.backgroundAlpha or .92)end)
-    b:SetScript('OnLeave',function(self)local c=theme().button;self:SetBackdropColor(c[1],c[2],c[3],F.db.settings.backgroundAlpha or .92)end)
+    b:SetScript('OnLeave',function(self)local c=self._active and theme().hover or theme().button;self:SetBackdropColor(c[1],c[2],c[3],F.db.settings.backgroundAlpha or .92)end)
     return b
 end
 local function panel(parent,name)
     local f=name and CreateFrame('Frame',name,parent,'BackdropTemplate') or acquire(parent,'Frame','BackdropTemplate')
+    if parent==UIParent then
+        -- Stack the entire window as one render group, including deep children.
+        f:SetToplevel(true)
+        f:SetFlattensRenderLayers(true)
+    end
     roundSurface(f)
     if f.crest then f.crest:Hide() end;if f.bar then f.bar:Hide() end
     f:SetAlpha(1);f:EnableMouse(true);f:SetScript('OnMouseUp',nil);f:SetScript('OnEnter',nil);f:SetScript('OnLeave',nil)
@@ -115,9 +125,9 @@ local function tooltip(frame,title,lines)
         for _,s in ipairs(lines) do GameTooltip:AddLine(s,1,1,1,true) end
         GameTooltip:Show()
     end)
-    frame:SetScript('OnLeave',function(self) if self._caption then local c=theme().button;self:SetBackdropColor(c[1],c[2],c[3],F.db.settings.backgroundAlpha or .92) end;GameTooltip:Hide() end)
+    frame:SetScript('OnLeave',function(self) if self._caption then local c=self._active and theme().hover or theme().button;self:SetBackdropColor(c[1],c[2],c[3],F.db.settings.backgroundAlpha or .92) end;GameTooltip:Hide() end)
 end
-local tabs={{'sheet','Character'},{'skills','Skills'},{'att','ATT'},{'notes','Notebook'},{'roster','Warband'},{'census','Census'},{'reps','Reputations'},{'settings','Settings'}}
+local tabs={{'sheet','Character','CHARACTER'},{'notes','Notebook'},{'skills','Skills & trades'},{'reps','Reputations'},{'att','Collection leads'},{'roster','Roster','WARBAND'},{'census','Census'},{'settings','Preferences','PREFERENCES'}}
 local function text(t,x,y,w,font) return label(F.content,M.Plain(t),x,-y,w,font) end
 local function value(t) if t==nil then return 'Not recorded' end;return tostring(t) end
 local function stamp(t) return t and date('%b %d, %Y %I:%M %p',t) or 'Not recorded' end
@@ -141,36 +151,73 @@ local function stat(x,y,w,title,content)
     tooltip(f,title,{M.Plain(value(content))});return f
 end
 local function section(title,y)
-    text(title:upper(),4,y,F.width-8,'GameFontNormal');return y+22
+    text(title:upper(),4,y,F.width-8,'GameFontNormal');return y+26
+end
+function F.Layout()
+    local f=F.frame;if not f then return end
+    F.width=math.max(700,f:GetWidth()-222);F.viewportHeight=math.max(280,f:GetHeight()-104)
+    F.sidebar:ClearAllPoints();F.sidebar:SetPoint('TOPLEFT',12,-12);F.sidebar:SetSize(164,f:GetHeight()-24)
+    F.scroll:ClearAllPoints();F.scroll:SetPoint('TOPLEFT',194,-84);F.scroll:SetSize(F.width,F.viewportHeight)
+    F.content:SetWidth(F.width)
+    F.pageTitle:SetWidth(F.width-264);F.pageContext:SetWidth(F.width-264)
+    F.sideContext:ClearAllPoints();F.sideContext:SetPoint('BOTTOMLEFT',12,47)
+    F.sideRealm:ClearAllPoints();F.sideRealm:SetPoint('BOTTOMLEFT',12,28)
+    F.sideVersion:ClearAllPoints();F.sideVersion:SetPoint('BOTTOMLEFT',12,10)
+    F.switchCharacter:ClearAllPoints();F.switchCharacter:SetPoint('BOTTOMLEFT',12,72)
+end
+function F.PickCharacter()
+    local options={}
+    for guid,c in pairs(F.db.characters)do options[#options+1]={id=guid,name=(c.name or '?')..' - '..(c.realm or '?')}end
+    table.sort(options,function(a,b)return a.name<b.name end)
+    F.Choose('Choose a character',options,function(guid)F.selected=guid;F.scroll:SetVerticalScroll(0);F.Render()end)
 end
 function F.CreateWindow()
     if F.frame then return end
     local f=panel(UIParent,'DuckMooFolioWindow');F.frame=f;table.insert(UISpecialFrames,'DuckMooFolioWindow')
-    local size=F.db.settings.size or {920,640}
-    f:SetSize(math.min(size[1],UIParent:GetWidth()-30),math.min(size[2],UIParent:GetHeight()-30));f:SetPoint('CENTER');f:SetFrameStrata('HIGH')
+    local size=F.db.settings.size or {1040,740}
+    f:SetSize(math.min(math.max(940,size[1]),UIParent:GetWidth()-30),math.min(math.max(560,size[2]),UIParent:GetHeight()-30))
+    f:SetPoint('CENTER');f:SetFrameStrata('HIGH')
     local p=F.db.settings.position
-    if p then f:ClearAllPoints();f:SetPoint(p[1],UIParent,p[2],p[3],p[4]) end
-    f:SetMovable(true);f:EnableMouse(true);f:SetScript('OnDragStart',nil)
-    local drag=CreateFrame('Frame',nil,f);F.headerDrag=drag;drag:SetFrameLevel(f:GetFrameLevel()+1);drag:SetPoint('TOPLEFT',0,0);drag:SetPoint('TOPRIGHT',0,0);drag:SetHeight(45);drag:EnableMouse(true);drag:RegisterForDrag('LeftButton')
+    if p then f:ClearAllPoints();f:SetPoint(p[1],UIParent,p[2],p[3],p[4])end
+    f:SetMovable(true);f:EnableMouse(true)
+    local drag=CreateFrame('Frame',nil,f);F.headerDrag=drag;drag:SetFrameLevel(f:GetFrameLevel()+1)
+    drag:SetPoint('TOPLEFT',180,0);drag:SetPoint('TOPRIGHT',0,0);drag:SetHeight(70);drag:EnableMouse(true);drag:RegisterForDrag('LeftButton')
     drag:SetScript('OnDragStart',function()f:StartMoving()end)
     drag:SetScript('OnDragStop',function()f:StopMovingOrSizing();local a,_,b,x,y=f:GetPoint();F.db.settings.position={a,b,x,y}end)
-    f.stripes={};for i=1,5 do local t=f:CreateTexture(nil,'ARTWORK');t:SetTexture('Interface/Buttons/WHITE8X8');t:SetPoint('TOPLEFT',0,-(i-1));t:SetPoint('TOPRIGHT',0,-(i-1));t:SetHeight(1);f.stripes[i]=t end
-    f:SetResizable(true);if f.SetResizeBounds then f:SetResizeBounds(760,420,1600,1100) end
-    label(f,'DuckMoo Services',16,-10,260,'GameFontDisableSmall')
-    label(f,'CHARACTER FOLIO',16,-24,300,'GameFontNormalLarge')
-    local currentButton=button(f,'Current character',480,-15,130,function()F.selected=F.current;F.tab='sheet';F.Render()end)
-    local refreshButton=button(f,'Refresh',617,-15,85,function()F.Snapshot(true);F.DiscoverProfession()end)
-    local close=button(f,'X',0,0,26,function()f:Hide()end);close:ClearAllPoints();close:SetPoint('TOPRIGHT',-8,-8);F.closeButton=close
-    for _,control in ipairs({currentButton,refreshButton,close})do control:SetFrameLevel(drag:GetFrameLevel()+5);control:EnableMouse(true);control:RegisterForClicks('LeftButtonUp')end
-    F.tabButtons={}
-    for i,t in ipairs(tabs) do
-        local b=button(f,t[2],12+(i-1)*96,-57,91,function()F.tab=t[1];F.page=1;F.Render()end)
-        F.tabButtons[t[1]]=b
+    f:SetResizable(true);if f.SetResizeBounds then f:SetResizeBounds(940,560,1600,1100)end
+    F.sidebar=panel(f);F.sidebar._sidebar=true
+    f.stripes={}
+    for i=1,5 do
+        local t=F.sidebar:CreateTexture(nil,'ARTWORK');t:SetTexture('Interface/Buttons/WHITE8X8')
+        t:SetPoint('TOPLEFT',12,-10-(i-1)*4);t:SetSize(140,4);f.stripes[i]=t
     end
-    F.scroll=CreateFrame('ScrollFrame',nil,f,'UIPanelScrollFrameTemplate');F.scroll:SetPoint('TOPLEFT',14,-94);F.scroll:SetPoint('BOTTOMRIGHT',-28,12)
+    label(F.sidebar,'DuckMoo',12,-38,140,'GameFontNormalLarge')
+    label(F.sidebar,'CHARACTER FOLIO',12,-59,140,'GameFontDisableSmall')
+    F.tabButtons={};local y=86
+    for _,tab in ipairs(tabs)do
+        if tab[3] then label(F.sidebar,tab[3],12,-y,140,'GameFontDisableSmall');y=y+23 end
+        local key=tab[1]
+        local b=button(F.sidebar,tab[2],8,-y,148,function()
+            if F.notePanel then F.notePanel.edit:ClearFocus()end
+            F.tab=key;F.page=1;F.scroll:SetVerticalScroll(0);F.Render()
+        end)
+        b:SetHeight(30);F.tabButtons[key]=b;y=y+34
+    end
+    F.switchCharacter=button(F.sidebar,'Choose character',12,0,140,F.PickCharacter)
+    F.sideContext=label(F.sidebar,'',12,0,140,'GameFontNormal')
+    F.sideRealm=label(F.sidebar,'',12,0,140,'GameFontDisableSmall')
+    F.sideVersion=label(F.sidebar,'',12,0,140,'GameFontDisableSmall')
+    F.pageTitle=label(f,'Character',194,-19,400,'GameFontNormalLarge')
+    F.pageContext=label(f,'',194,-45,400,'GameFontDisableSmall')
+    local currentButton=button(f,'Current character',0,0,132,function()F.selected=F.current;F.scroll:SetVerticalScroll(0);F.Render()end)
+    currentButton:ClearAllPoints();currentButton:SetPoint('TOPRIGHT',-132,-24)
+    local refreshButton=button(f,'Refresh',0,0,76,function()F.Snapshot(true);F.DiscoverProfession();F.Render()end)
+    refreshButton:ClearAllPoints();refreshButton:SetPoint('TOPRIGHT',-48,-24)
+    local close=button(f,'X',0,0,26,function()f:Hide()end);close:ClearAllPoints();close:SetPoint('TOPRIGHT',-12,-24);F.closeButton=close
+    for _,control in ipairs({currentButton,refreshButton,close})do control:SetFrameLevel(drag:GetFrameLevel()+5);control:EnableMouse(true);control:RegisterForClicks('LeftButtonUp')end
+    F.scroll=CreateFrame('ScrollFrame',nil,f,'UIPanelScrollFrameTemplate')
     F.content=CreateFrame('Frame',nil,F.scroll);F.content:SetPoint('TOPLEFT',F.scroll,'TOPLEFT',0,0);F.scroll:SetScrollChild(F.content)
-    local grip=CreateFrame('Button',nil,f);grip:SetSize(18,18);grip:SetPoint('BOTTOMRIGHT',-1,1);grip:SetNormalTexture('Interface/ChatFrame/UI-ChatIM-SizeGrabber-Up')
-    F.resizeGrip=grip
+    local grip=CreateFrame('Button',nil,f);grip:SetSize(18,18);grip:SetPoint('BOTTOMRIGHT',-1,1);grip:SetNormalTexture('Interface/ChatFrame/UI-ChatIM-SizeGrabber-Up');F.resizeGrip=grip
     grip:SetScript('OnMouseDown',function(_,mouse)
         if mouse~='LeftButton' then return end
         local x,y=GetCursorPosition();local scale=f:GetEffectiveScale()
@@ -179,7 +226,7 @@ function F.CreateWindow()
         if left and top then f:ClearAllPoints();f:SetPoint('TOPLEFT',UIParent,'BOTTOMLEFT',left,top)end
         grip:SetScript('OnUpdate',function()
             local mx,my=GetCursorPosition();local r=F.resizing
-            f:SetSize(math.max(760,math.min(UIParent:GetWidth()-20,r.w+mx/scale-r.x)),math.max(420,math.min(UIParent:GetHeight()-20,r.h+r.y-my/scale)))
+            f:SetSize(math.max(940,math.min(UIParent:GetWidth()-20,r.w+mx/scale-r.x)),math.max(560,math.min(UIParent:GetHeight()-20,r.h+r.y-my/scale)))
         end)
     end)
     grip:SetScript('OnMouseUp',function()
@@ -187,46 +234,63 @@ function F.CreateWindow()
         local a,_,b,x,y=f:GetPoint();F.db.settings.position={a,b,x,y};F.Render()
     end)
     f:SetScript('OnSizeChanged',function()if F.content and not F.rendering and not F.resizing then F.Render()end end)
+    F.Layout()
 end
 function F.Show(tab)
     if not F.db then F.Init() end
     F.Snapshot(true);F.CreateWindow();F.selected=F.current;F.tab=tab or 'sheet';F.page=1;F.frame:Show();F.Render()
 end
 function F.Sheet(c)
-    local w=F.width;local hero=card(0,0,w,104)
+    local w=F.width;local hero=card(0,0,w,108)
+    if not hero.crest then hero.crest=hero:CreateTexture(nil,'ARTWORK')end
+    hero.crest:ClearAllPoints();hero.crest:SetPoint('TOPLEFT',14,-16);hero.crest:SetSize(58,58);hero.crest:SetTexture(c.specIcon or 'Interface/Icons/INV_Misc_Book_09');hero.crest:Show()
+    label(hero,M.Plain(c.name or 'Your character'),86,-14,w-248,'GameFontNormalHuge'):SetWordWrap(false)
     local title=(c.title or ''):gsub('%%s',c.name or '')
-    label(hero,M.Plain(c.name or 'Your adventurer'),16,-12,w-120,'GameFontNormalHuge')
-    label(hero,M.Plain(title~='' and title or 'An adventurer with unfinished business'),17,-40,w-130,'GameFontHighlight')
-    label(hero,M.Plain((c.race or '?')..' | '..M.Spec(c)..' '..(c.className or '')..' | '..(c.faction or '?')),17,-63,w-130,'GameFontHighlightSmall')
-    label(hero,M.Plain((c.realm or '?')..' | '..(c.guild or 'No guild')),17,-83,w-130,'GameFontDisableSmall')
-    if not hero.crest then hero.crest=hero:CreateTexture(nil,'ARTWORK');hero.crest:SetPoint('TOPRIGHT',-18,-18);hero.crest:SetSize(72,72) end
-    hero.crest:Show();hero.crest:SetTexture(c.specIcon or 'Interface/Icons/INV_Misc_Book_09')
-    button(F.content,'Assign tags',w-112,-108,112,F.TagPicker)
-    text(M.TagText(c)~='' and ('Tags: '..M.TagText(c)) or 'Tags: none assigned',6,111,w-132,'GameFontHighlightSmall'):SetHeight(28)
-    local gap=4;local col=(w-3*gap)/4
-    stat(0,144,col,'Level',M.Level(c));stat(col+gap,144,col,'Equipped item level',c.ilvl and string.format('%.1f',c.ilvl));stat(2*(col+gap),144,col,'Rested XP',M.Rested(c));stat(3*(col+gap),144,col,'Last spec role',c.role or 'Unknown')
-    local y=section('The adventurer',193);col=(w-16)/3
+    label(hero,M.Plain(title~='' and title or ((c.race or 'Unknown race')..' '..(c.className or ''))),86,-43,w-248,'GameFontHighlight'):SetWordWrap(false)
+    local identity=(c.race or 'Unknown race')..' | '..M.Spec(c)..' '..(c.className or '')..' | '..(c.faction or '?')..' | '..(c.guild or 'No guild')
+    label(hero,M.Plain(identity),86,-66,w-106,'GameFontHighlightSmall'):SetWordWrap(false)
+    tooltip(hero,M.Plain(c.name or 'Your character'),{M.Plain(title),M.Plain(identity),M.Plain(c.realm or 'Unknown realm')})
+    label(hero,F.selected==F.current and 'THIS CHARACTER' or 'RECORDED CHARACTER',w-156,-18,142,'GameFontDisableSmall')
+    button(hero,'Assign tags',w-138,-43,124,F.TagPicker)
+    label(hero,M.Plain(M.TagText(c)~='' and ('Tags: '..M.TagText(c)) or 'No tags assigned'),14,-88,w-28,'GameFontDisableSmall'):SetWordWrap(false)
+    local gap=8;local col=(w-3*gap)/4
+    stat(0,116,col,'Level',M.Level(c));stat(col+gap,116,col,'Equipped item level',c.ilvl and string.format('%.1f',c.ilvl))
+    stat(2*(col+gap),116,col,'Rested XP',M.Rested(c));stat(3*(col+gap),116,col,'Last spec role',c.role or 'Unknown')
+    local y=section('Attributes',171)
+    local attributes=card(0,y,w,128);local cell=(w-24)/4
     local fields={{'Strength',c.stats and c.stats.strength},{'Agility',c.stats and c.stats.agility},{'Stamina',c.stats and c.stats.stamina},{'Intellect',c.stats and c.stats.intellect},{'Health',c.health},{'Armor',c.stats and c.stats.armor},{'Crit',c.stats and c.stats.crit and string.format('%.1f%%',c.stats.crit)},{'Haste',c.stats and c.stats.haste and string.format('%.1f%%',c.stats.haste)},{'Mastery',c.stats and c.stats.mastery and string.format('%.1f%%',c.stats.mastery)},{'Speed rating',c.stats and c.stats.speedRating},{'Movement',c.stats and c.stats.movement and string.format('%.1f%%',c.stats.movement)},{'Speed bonus',c.stats and c.stats.speedBonus and string.format('%.1f%%',c.stats.speedBonus)}}
-    for i,v in ipairs(fields) do stat(((i-1)%3)*(col+8),y+math.floor((i-1)/3)*47,col,v[1],v[2]) end
-    y=y+192;y=section('Travel & whereabouts',y)
-    stat(0,y,(w-8)/2,'Hearthstone',c.bind);stat((w+8)/2,y,(w-8)/2,F.selected==F.current and 'Current location' or 'Last recorded location',c.subzone and c.subzone~='' and c.subzone or c.zone)
-    y=y+49
-    text((c.zone or 'Unknown zone')..' | '..(c.realmRegion or 'Unknown region')..' | '..(c.loggedOut and 'Logged out: ' or 'Last seen: ')..stamp(c.lastSeen),6,y,w-12,'GameFontDisableSmall');y=y+28
-    y=section('Collection milestones',y)
-    local collected=c.collections or {};local cw=(w-16)/3
-    stat(0,y,cw,'Mounts (account)',collected.mounts)
-    stat(cw+8,y,cw,'Pets (account)',collected.pets)
-    stat(2*(cw+8),y,cw,'Achievement points',collected.achievementPoints)
-    y=y+49
-    y=section('Your plans for this character',y)
-    local note=c.notes.general or ''
-    local f=text(note~='' and note or 'What is this character for? Add plans, farming projects, or a backstory in Notebook.',8,y,w-16);f:SetHeight(note~='' and 50 or 26);y=y+(note~='' and 56 or 32)
-    button(F.content,'Open Notebook',4,-y,140,function()F.tab='notes';F.Render()end)
-    button(F.content,'Find another character',151,-y,172,function()F.tab='roster';F.Render()end)
-    if C_AddOns and S(C_AddOns.IsAddOnLoaded,'DuckMooPlanner') then
-        button(F.content,'Concentration Planner',330,-y,175,function()if SlashCmdList.DUCKMOOPLANNER then SlashCmdList.DUCKMOOPLANNER('')end end)
+    for i,v in ipairs(fields)do
+        local x=12+((i-1)%4)*cell;local top=8+math.floor((i-1)/4)*40
+        label(attributes,v[1]:upper(),x,-top,cell-12,'GameFontDisableSmall')
+        label(attributes,M.Plain(value(v[2])),x,-top-16,cell-12,'GameFontHighlight'):SetWordWrap(false)
     end
-    F.content:SetHeight(y+40)
+    y=y+140;y=section('Travel & whereabouts',y)
+    local travel=card(0,y,w,72)
+    label(travel,'HEARTHSTONE',12,-8,w*.45,'GameFontDisableSmall')
+    label(travel,M.Plain(value(c.bind)),12,-25,w*.45,'GameFontHighlight'):SetWordWrap(false)
+    label(travel,F.selected==F.current and 'CURRENT LOCATION' or 'LAST RECORDED LOCATION',w*.5,-8,w*.5-12,'GameFontDisableSmall')
+    label(travel,M.Plain(value(c.subzone and c.subzone~='' and c.subzone or c.zone)),w*.5,-25,w*.5-12,'GameFontHighlight'):SetWordWrap(false)
+    label(travel,M.Plain((c.zone or 'Unknown zone')..' | '..(c.realmRegion or 'Unknown region')..' | '..(c.loggedOut and 'Logged out: ' or 'Last seen: ')..stamp(c.lastSeen)),12,-52,w-24,'GameFontDisableSmall'):SetWordWrap(false)
+    y=y+84
+    local resume=card(0,y,w,94)
+    label(resume,'WHERE I LEFT OFF',12,-10,w-160,'GameFontNormal')
+    button(resume,'Edit next step',w-138,-7,124,function()F.noteSection='resume';F.tab='notes';F.scroll:SetVerticalScroll(0);F.Render()end)
+    local nextStep=c.notes.resume or ''
+    label(resume,M.Plain(nextStep~='' and nextStep or 'Leave one small next step for your next login.'),12,-36,w-24):SetHeight(32)
+    label(resume,c.resumeUpdatedAt and ('Updated '..stamp(c.resumeUpdatedAt)) or 'Saved with this character; ready whenever you are.',12,-75,w-24,'GameFontDisableSmall')
+    tooltip(resume,'Where I left off',{M.Plain(nextStep~='' and nextStep or 'No next step recorded.'),'Edit next step opens this character\'s notebook.'})
+    y=y+108;y=section('Collection milestones',y)
+    local collected=c.collections or {};local cw=(w-16)/3
+    stat(0,y,cw,'Mounts (account)',collected.mounts);stat(cw+8,y,cw,'Pets (account)',collected.pets);stat(2*(cw+8),y,cw,'Achievement points',collected.achievementPoints)
+    y=y+55;y=section('Purpose & plans',y)
+    local plans=card(0,y,w,106);local note=c.notes.general or ''
+    label(plans,M.Plain(note~='' and note or 'Capture what this character is for: a project, an adventure, a backstory.'),12,-10,w-24):SetHeight(46)
+    button(plans,'Open Notebook',12,-70,140,function()F.noteSection='general';F.tab='notes';F.scroll:SetVerticalScroll(0);F.Render()end)
+    button(plans,'Find another character',160,-70,172,function()F.tab='roster';F.scroll:SetVerticalScroll(0);F.Render()end)
+    if C_AddOns and S(C_AddOns.IsAddOnLoaded,'DuckMooPlanner')then
+        button(plans,'Concentration Planner',340,-70,176,function()if SlashCmdList.DUCKMOOPLANNER then SlashCmdList.DUCKMOOPLANNER('')end end)
+    end
+    F.content:SetHeight(y+118)
 end
 function F.Section(title,y,key)
     local id=(F.selected or '')..':'..key
@@ -340,40 +404,83 @@ function F.Notes(c)
     local n=F.notePanel
     if not n then
         local dynamic=F.dynamic;F.dynamic=false
-        n=panel(F.content);F.notePanel=n;n:SetPoint('TOPLEFT',0,0)
-        label(n,'THE CHARACTER NOTEBOOK',10,-8,500,'GameFontNormalLarge')
-        button(n,'Assign tags',10,-36,112,F.TagPicker)
-        n.tagsLabel=label(n,'',132,-42,500,'GameFontHighlightSmall')
+        n=CreateFrame('Frame',nil,F.content);F.notePanel=n;n:SetPoint('TOPLEFT',0,0)
+        n.rail=panel(n);n.rail:SetPoint('TOPLEFT',0,0);n.rail:SetWidth(164)
+        label(n.rail,'NOTEBOOK',12,-12,140,'GameFontNormal')
         n.categories={}
-        for i,v in ipairs({{'general','Purpose & plans'},{'adventuring','Adventuring'},{'professions','Professions'},{'backstory','Backstory'}})do
+        for i,v in ipairs({{'resume','Where I left off'},{'general','Purpose & plans'},{'adventuring','Adventuring'},{'professions','Professions'},{'backstory','Backstory'}})do
             local key=v[1]
-            n.categories[key]=button(n,v[2],10+(i-1)*146,-72,140,function()n.edit:ClearFocus();F.noteSection=key;F.Render()end)
+            n.categories[key]=button(n.rail,v[2],8,-42-(i-1)*36,148,function()n.edit:ClearFocus();F.noteSection=key;F.Render()end)
+            n.categories[key]:SetHeight(30)
         end
-        n.scroll=CreateFrame('ScrollFrame',nil,n,'UIPanelScrollFrameTemplate');n.scroll:SetPoint('TOPLEFT',16,-109);n.scroll:EnableMouse(true)
-        n.edit=CreateFrame('EditBox',nil,n.scroll);n.edit:SetPoint('TOPLEFT',n.scroll,'TOPLEFT',0,0);n.edit:SetMultiLine(true);n.edit:SetAutoFocus(false);n.edit:EnableMouse(true);n.edit:SetFontObject('GameFontHighlight');n.edit:SetMaxLetters(30000);n.edit:SetHeight(280)
-        n.scroll:SetScrollChild(n.edit)
-        n.scroll:SetScript('OnMouseDown',function()n.edit:SetFocus()end)
+        button(n.rail,'Assign tags',8,-236,148,F.TagPicker)
+        n.tagsLabel=label(n.rail,'',12,-277,140,'GameFontDisableSmall');n.tagsLabel:SetWordWrap(true);n.tagsLabel:SetHeight(74)
+        n.paper=panel(n);n.paper:SetPoint('TOPLEFT',176,0)
+        n.title=label(n.paper,'',14,-14,400,'GameFontNormalLarge')
+        n.subtitle=label(n.paper,'',14,-42,400,'GameFontDisableSmall')
+        n.scroll=CreateFrame('ScrollFrame',nil,n.paper,'UIPanelScrollFrameTemplate');n.scroll:SetPoint('TOPLEFT',18,-76);n.scroll:EnableMouse(true)
+        n.edit=CreateFrame('EditBox',nil,n.scroll);n.edit:SetPoint('TOPLEFT',n.scroll,'TOPLEFT',0,0);n.edit:SetMultiLine(true);n.edit:SetAutoFocus(false);n.edit:EnableMouse(true);n.edit:SetFontObject('GameFontHighlight');n.edit:SetMaxLetters(30000)
+        n.scroll:SetScrollChild(n.edit);n.scroll:SetScript('OnMouseDown',function()n.edit:SetFocus()end)
         n.measure=n:CreateFontString(nil,'OVERLAY','GameFontHighlight');n.measure:Hide();n.measure:SetWordWrap(true)
         n.save=function()
             if n.loading or not n.guid then return end
             local character=F.db.characters[n.guid]
-            if character then character.notes[n.section]=n.edit:GetText();n.saved:SetText('Saved for '..character.name..'.')end
+            if character then
+                if n.section=='resume' then F.SaveResume(n.guid,n.edit:GetText())else character.notes[n.section]=n.edit:GetText()end
+                n.saved:SetText('Saved for '..character.name..'.')
+            end
         end
         n.edit:SetScript('OnTextChanged',function(self)
-            n.measure:SetText(M.Plain(self:GetText()));self:SetHeight(math.max(280,(n.measure:GetStringHeight() or 280)+24));n.save()
+            n.measure:SetText(M.Plain(self:GetText()));self:SetHeight(math.max(n.editHeight or 240,(n.measure:GetStringHeight() or 240)+24));n.save()
         end)
         n.edit:SetScript('OnEscapePressed',function(self)n.save();self:ClearFocus()end)
-        button(n,'Save note',10,-402,112,function()n.save();n.edit:ClearFocus()end)
-        n.saved=label(n,'Notes save as you type.',134,-409,500,'GameFontHighlightSmall')
+        n.saveButton=button(n.paper,'Save note',14,0,112,function()n.save();n.edit:ClearFocus()end)
+        n.saved=label(n.paper,'Notes save as you type.',140,0,300,'GameFontDisableSmall')
         F.dynamic=dynamic
     end
-    n:Show();n:SetSize(F.width,438);n.scroll:SetSize(F.width-46,280);n.edit:SetWidth(F.width-54);n.measure:SetWidth(F.width-54);n.tagsLabel:SetWidth(F.width-145);n.tagsLabel:SetText(M.Plain(M.TagText(c)))
+    local height=math.max(390,F.viewportHeight-8);local paperWidth=F.width-176
+    n:Show();n:SetSize(F.width,height);n.rail:SetHeight(height);n.paper:SetSize(paperWidth,height)
+    n.scroll:SetSize(paperWidth-48,height-130);n.editHeight=height-130
+    n.edit:SetWidth(paperWidth-54);n.measure:SetWidth(paperWidth-54);n.edit:SetHeight(math.max(n.editHeight,(n.measure:GetStringHeight()or 0)+24))
+    n.title:SetWidth(paperWidth-28);n.subtitle:SetWidth(paperWidth-28)
+    n.saveButton:ClearAllPoints();n.saveButton:SetPoint('TOPLEFT',14,-height+38)
+    n.saved:ClearAllPoints();n.saved:SetPoint('TOPLEFT',140,-height+44);n.saved:SetWidth(paperWidth-156)
+    n.tagsLabel:SetText(M.Plain(M.TagText(c)~='' and ('Tags: '..M.TagText(c)) or 'No tags assigned'))
     local section=F.noteSection or 'general'
     if n.guid~=F.selected or n.section~=section then
         n.loading=true;n.edit:ClearFocus();n.guid=F.selected;n.section=section;n.edit:SetText(c.notes[section] or '');n.saved:SetText('Notes save as you type.');n.loading=false
     end
+    local names={resume='Where I left off',general='Purpose & plans',adventuring='Adventuring',professions='Professions',backstory='Backstory'}
+    n.title:SetText(names[n.section] or 'Notebook');n.subtitle:SetText(M.Plain((c.name or '?')..' - '..(c.realm or '?')..' | '..(F.selected==F.current and 'This character' or 'Offline notes are editable')))
     for key,b in pairs(n.categories)do b._active=key==n.section end
-    F.content:SetHeight(442)
+    F.content:SetHeight(height)
+end
+function F.RosterViewEditor()
+    local p=F.viewEditor
+    if not p then
+        local dynamic=F.dynamic;F.dynamic=false
+        p=panel(UIParent,'DuckMooFolioViewEditor');F.viewEditor=p
+        p:SetSize(410,150);p:SetPoint('CENTER');p:SetFrameStrata('DIALOG');p:SetClampedToScreen(true)
+        table.insert(UISpecialFrames,'DuckMooFolioViewEditor')
+        label(p,'Save this roster view',14,-12,370,'GameFontNormalLarge')
+        label(p,'Name these filters, search and grouping. Reusing a name updates it.',14,-40,370,'GameFontHighlightSmall'):SetHeight(30)
+        p.edit=CreateFrame('EditBox',nil,p,'InputBoxTemplate');p.edit:SetPoint('TOPLEFT',22,-78);p.edit:SetSize(360,24);p.edit:SetAutoFocus(false);p.edit:SetMaxLetters(60)
+        p.save=button(p,'Save',14,-115,100,function()if F.SaveRosterView(p.edit:GetText())then p:Hide();F.Render()end end)
+        button(p,'Cancel',296,-115,100,function()p:Hide()end)
+        p.edit:SetScript('OnEscapePressed',function()p:Hide()end)
+        F.dynamic=dynamic
+    end
+    local t=theme();p.edit:SetTextColor(unpack(t.text));p.edit:SetText('');p:Show();p.edit:SetFocus();F.ApplyTheme()
+end
+function F.RosterViewPicker(remove)
+    local options={}
+    for name in pairs(F.db.settings.rosterViews)do options[#options+1]={id=name,name=name}end
+    table.sort(options,function(a,b)return a.name<b.name end)
+    if #options==0 then F.Print('No saved views yet. Set your filters and choose Save view.');return end
+    F.Choose(remove and 'Remove a saved view' or 'Choose a saved view',options,function(name)
+        if remove then F.db.settings.rosterViews[name]=nil else F.ApplyRosterView(name) end
+        F.Render()
+    end)
 end
 function F.Choose(title,options,onSelect)
     local choice=F.choice
@@ -415,66 +522,91 @@ function F.FilterControl(kind,title,options,x,y,w)
     end)
     tooltip(b,title,{M.Plain(caption),'Click to choose or clear this filter. Filters combine.'})
 end
+
 function F.Roster()
     local f=F.filters;local w=F.width;local col=(w-18)/4
+    if not F.rosterSearch then
+        F.rosterSearch=CreateFrame('EditBox',nil,F.content,'InputBoxTemplate');F.rosterSearch:SetHeight(26);F.rosterSearch:SetAutoFocus(false);F.rosterSearch:SetMaxLetters(100)
+        F.rosterSearch:SetScript('OnTextChanged',function(self,user)if user then F.filters.search=self:GetText();F.page=1;F.Render()end end)
+        F.rosterSearch:SetScript('OnEscapePressed',function(self)self:ClearFocus()end)
+        F.rosterSearch.hint=label(F.rosterSearch,'Search characters, tags or notes',2,-7,300,'GameFontDisableSmall')
+        tooltip(F.rosterSearch,'Search your characters',{'Search names, realms, specializations, tags and notebook text.'})
+    end
+    F.rosterSearch:Show();F.rosterSearch:ClearAllPoints();F.rosterSearch:SetPoint('TOPLEFT',8,-2);F.rosterSearch:SetWidth(w-314)
+    if not F.rosterSearch:HasFocus()then F.rosterSearch:SetText(f.search or '')end
+    F.rosterSearch.hint:SetShown(F.rosterSearch:GetText()=='')
+    local active=0;for key,v in pairs(f)do if key~='search' and key~='sort' and v then active=active+1 end end
+    button(F.content,'Filters'..(active>0 and (' ('..active..')') or ''),w-300,0,90,function()F.rosterFiltersOpen=not F.rosterFiltersOpen;F.Render()end)
+    button(F.content,'Saved views',w-204,0,112,function()F.RosterViewPicker(false)end)
+    button(F.content,'Save view',w-86,0,86,F.RosterViewEditor)
+    F.FilterControl('sort','Sort',{{id='level',name='Level & XP'},{id='ilvl',name='Item level'},{id='rested',name='Rested XP'},{id='name',name='Name'}},0,36,174)
+    button(F.content,F.flatRoster and 'Group by realm' or 'Flat ranking',182,-36,154,function()F.flatRoster=not F.flatRoster;F.page=1;F.Render()end)
+    button(F.content,'Clear filters',344,-36,108,function()F.filters={};F.page=1;F.rosterSearch:ClearFocus();F.rosterSearch:SetText('');F.Render()end)
+    button(F.content,'Remove saved view',460,-36,152,function()F.RosterViewPicker(true)end)
+    local base=78
+    if F.rosterFiltersOpen then
     local classes={};for i=1,20 do local name,token=S(GetClassInfo,i);if name and token then classes[#classes+1]={id=token,name=name}end end
     if #classes==0 then classes=M.Options(F.db,'class') end
-    F.FilterControl('class','Class',classes,0,0,col)
-    F.FilterControl('role','Role',{{id='TANK',name='Tank'},{id='HEALER',name='Healer'}},col+6,0,col)
-    F.FilterControl('faction','Faction',{{id='Alliance',name='Alliance'},{id='Horde',name='Horde'}},2*(col+6),0,col)
-    F.FilterControl('region','Region',{{id='NA-US',name='NA-US'},{id='NA-OCE',name='NA-OCE'},{id='NA-LATAM',name='NA-LATAM'},{id='NA-BR',name='NA-BR'},{id='EU',name='EU'},{id='KR',name='KR'},{id='TW',name='TW'}},3*(col+6),0,col)
-    F.FilterControl('profession','Profession',M.Options(F.db,'profession'),0,30,col)
-    F.FilterControl('expansion','Expansion skill',M.Options(F.db,'expansion',f.profession),col+6,30,col)
-    F.FilterControl('reputation','Reputation',M.Options(F.db,'reputation'),2*(col+6),30,col)
-    F.FilterControl('tag','Tag',M.Options(F.db,'tag'),3*(col+6),30,col)
-    F.FilterControl('sort','Sort',{{id='level',name='Level & XP'},{id='ilvl',name='Item level'},{id='rested',name='Rested XP'},{id='name',name='Name'}},0,60,col)
-    F.FilterControl('realm','Realm',M.Options(F.db,'realm'),col+6,60,col)
-    button(F.content,F.flatRoster and 'Group by realm' or 'Flat ranking',2*(col+6),-60,col,function()F.flatRoster=not F.flatRoster;F.page=1;F.Render()end)
-    button(F.content,'Clear filters',3*(col+6),-60,col,function()F.filters={};F.page=1;if F.rosterSearch then F.rosterSearch:ClearFocus();F.rosterSearch:SetText('')end;F.Render()end)
-    if not F.rosterSearch then
-        F.rosterSearch=CreateFrame('EditBox',nil,F.content,'InputBoxTemplate');F.rosterSearch:SetHeight(24);F.rosterSearch:SetAutoFocus(false);F.rosterSearch:SetMaxLetters(100)
-        F.rosterSearch:SetScript('OnTextChanged',function(self,user)
-            if user then F.filters.search=self:GetText();F.page=1;F.Render() end
-        end)
-        F.rosterSearch:SetScript('OnEscapePressed',function(self)self:ClearFocus()end)
+    F.FilterControl('class','Class',classes,0,72,col)
+    F.FilterControl('role','Role',{{id='TANK',name='Tank'},{id='HEALER',name='Healer'}},col+6,72,col)
+    F.FilterControl('faction','Faction',{{id='Alliance',name='Alliance'},{id='Horde',name='Horde'}},2*(col+6),72,col)
+    F.FilterControl('region','Region',{{id='NA-US',name='NA-US'},{id='NA-OCE',name='NA-OCE'},{id='NA-LATAM',name='NA-LATAM'},{id='NA-BR',name='NA-BR'},{id='EU',name='EU'},{id='KR',name='KR'},{id='TW',name='TW'}},3*(col+6),72,col)
+    F.FilterControl('profession','Profession',M.Options(F.db,'profession'),0,106,col)
+    F.FilterControl('expansion','Expansion skill',M.Options(F.db,'expansion',f.profession),col+6,106,col)
+    F.FilterControl('reputation','Reputation',M.Options(F.db,'reputation'),2*(col+6),106,col)
+    F.FilterControl('tag','Tag',M.Options(F.db,'tag'),3*(col+6),106,col)
+    F.FilterControl('realm','Realm',M.Options(F.db,'realm'),0,140,col)
+    text('Filters combine. Role searches include capable classes.',col+12,146,w-col-18,'GameFontDisableSmall')
+
+        base=182
     end
-    F.rosterSearch:Show();F.rosterSearch:ClearAllPoints();F.rosterSearch:SetPoint('TOPLEFT',8,-97);F.rosterSearch:SetWidth(w-20)
-    if not F.rosterSearch:HasFocus() then F.rosterSearch:SetText(f.search or '') end
     local entries=M.Roster(F.db,f);F.filteredRoster=entries
     local grouped=not F.flatRoster and not f.role and not f.reputation
-    local rows=grouped and M.Grouped(entries,F.db.settings.collapsed) or entries
-    local pages=math.max(1,math.ceil(#rows/20));F.page=math.min(F.page or 1,pages)
-    text(#entries..' characters | '..(grouped and 'Grouped by realm' or 'Flat ranking')..' | Page '..F.page..' / '..pages,4,135,w-210,'GameFontDisableSmall')
-    button(F.content,'<',w-155,-129,36,function()F.page=math.max(1,F.page-1);F.Render()end)
-    button(F.content,'>',w-113,-129,36,function()F.page=math.min(pages,F.page+1);F.Render()end)
-    button(F.content,'All realms',w-71,-129,71,function()F.db.settings.collapsed={};F.filters.realm=nil;F.page=1;F.Render()end)
-    text('CHARACTER / REALM',8,166,w*.40,'GameFontDisableSmall')
-    text('LEVEL',w*.41,166,60,'GameFontDisableSmall');text('iLVL',w*.50,166,65,'GameFontDisableSmall');text('RESTED',w*.59,166,70,'GameFontDisableSmall')
-    text(f.reputation and 'REPUTATION' or 'LAST SPEC / FACTION',w*.70,166,w*.29,'GameFontDisableSmall')
-    local y=187
-    for index=(F.page-1)*20+1,math.min(#rows,F.page*20) do
-        local e=rows[index]
+    local rows=grouped and M.Grouped(entries,F.db.settings.collapsed)or entries
+    local pageSize=math.max(4,math.min(20,math.floor((F.viewportHeight-base-96)/48)))
+    F.rosterPageSize=pageSize
+    -- Keep realm headings with their characters, repeating the heading when a
+    -- large realm continues on the next page. Collapsed headings remain usable.
+    local pageRows={{}};local chunk=pageRows[1];local realmHeader
+    for index,e in ipairs(rows)do
+        local hasChildren=e.header and rows[index+1] and not rows[index+1].header
+        if #chunk>=pageSize or (hasChildren and #chunk>=pageSize-1)then
+            chunk={};pageRows[#pageRows+1]=chunk
+            if not e.header and realmHeader then chunk[#chunk+1]=realmHeader end
+        end
+        chunk[#chunk+1]=e
+        if e.header then realmHeader=e end
+    end
+    local pages=#pageRows;F.page=math.max(1,math.min(F.page or 1,pages))
+    F.rosterVisibleRows=pageRows[F.page];F.rosterPages=pageRows
+    text(#entries..' characters | '..(grouped and 'Grouped by realm' or 'Flat ranking')..' | Page '..F.page..' / '..pages,4,base+4,w-210,'GameFontDisableSmall')
+    button(F.content,'<',w-154,-base,34,function()F.page=math.max(1,F.page-1);F.Render()end)
+    button(F.content,'>',w-112,-base,34,function()F.page=math.min(pages,F.page+1);F.Render()end)
+    button(F.content,'All realms',w-70,-base,70,function()F.db.settings.collapsed={};F.filters.realm=nil;F.page=1;F.Render()end)
+    local header=base+36
+    text('CHARACTER / REALM',8,header,w*.40,'GameFontDisableSmall');text('LEVEL',w*.41,header,60,'GameFontDisableSmall')
+    text('iLVL',w*.50,header,65,'GameFontDisableSmall');text('RESTED',w*.59,header,70,'GameFontDisableSmall')
+    text(f.reputation and 'REPUTATION' or 'LAST SPEC / FACTION',w*.70,header,w*.29,'GameFontDisableSmall')
+    local y=header+24
+    for _,e in ipairs(F.rosterVisibleRows)do
         if e.header then
-            button(F.content,(F.db.settings.collapsed[e.header] and '[+] ' or '[-] ')..e.header..' ('..e.count..')',0,-y,w,function()
-                F.db.settings.collapsed[e.header]=not F.db.settings.collapsed[e.header];F.Render()
-            end);y=y+29
+            button(F.content,(F.db.settings.collapsed[e.header]and '[+] 'or '[-] ')..e.header..' ('..e.count..')',0,-y,w,function()F.db.settings.collapsed[e.header]=not F.db.settings.collapsed[e.header];F.Render()end);y=y+30
         else
             local c=e.c;local row=button(F.content,'',0,-y,w,function()F.selected=e.guid;F.tab='sheet';F.scroll:SetVerticalScroll(0);F.Render()end);row:SetHeight(44)
-            local name=label(row,M.Plain(c.name or '?'),8,-5,w*.39,'GameFontNormal')
-            local color=RAID_CLASS_COLORS and RAID_CLASS_COLORS[c.class];if color then name._fixedColor={color.r,color.g,color.b};name:SetTextColor(color.r,color.g,color.b)end
-            label(row,M.Plain((c.realm or '?')..' | '..(c.realmRegion or '?')),8,-25,w*.39,'GameFontDisableSmall')
-            label(row,M.Level(c),w*.41,-8,70)
-            label(row,c.ilvl and string.format('%.1f',c.ilvl) or '?',w*.50,-8,70)
-            label(row,M.Rested(c),w*.59,-8,70)
-            label(row,M.Plain(f.reputation and M.ReputationText(c.reputations[f.reputation]) or M.Spec(c)),w*.70,-5,w*.29,'GameFontHighlightSmall'):SetWordWrap(false)
-            label(row,M.Plain((c.faction or '?')..(f.reputation and c.reputations[f.reputation].accountWide and ' | Warband rep' or '')),w*.70,-25,w*.29,'GameFontDisableSmall')
-            tooltip(row,(c.name or '?')..'-'..(c.realm or '?'),{M.Plain(M.Spec(c)),M.Plain(M.TagText(c)),'Last updated: '..stamp(c.lastSeen),'Click to open this character folio.'})
-            y=y+48
+            local name=label(row,M.Plain(c.name or '?'),10,-6,w*.39,'GameFontNormal');name:SetWordWrap(false)
+            local color=RAID_CLASS_COLORS and RAID_CLASS_COLORS[c.class]
+            if color and theme().text[1]>.5 then name._fixedColor={color.r,color.g,color.b};name:SetTextColor(color.r,color.g,color.b)end
+            label(row,M.Plain((c.realm or '?')..' | '..(c.realmRegion or '?')),10,-26,w*.39,'GameFontDisableSmall'):SetWordWrap(false)
+            label(row,M.Level(c),w*.41,-8,65);label(row,c.ilvl and string.format('%.1f',c.ilvl)or '?',w*.50,-8,65)
+            label(row,M.Rested(c),w*.59,-8,65)
+            label(row,M.Plain(f.reputation and M.ReputationText(c.reputations[f.reputation])or M.Spec(c)),w*.70,-6,w*.29,'GameFontHighlightSmall'):SetWordWrap(false)
+            label(row,M.Plain((c.faction or '?')..(f.reputation and c.reputations[f.reputation].accountWide and ' | Warband rep'or '')),w*.70,-26,w*.29,'GameFontDisableSmall'):SetWordWrap(false)
+            tooltip(row,(c.name or '?')..'-'..(c.realm or '?'),{M.Plain(M.Spec(c)),M.Plain(M.TagText(c)),'Last updated: '..stamp(c.lastSeen),'Click to open this character folio.'});y=y+48
         end
     end
-    if #entries==0 then text('No recorded character matches these filters. Clear filters or scan more characters.',8,y,w-16);y=y+30 end
-    text('Role searches rank the last recorded role first. Americas realm labels are assigned automatically. Unknown data is not treated as missing progress.',4,y+8,w-8,'GameFontDisableSmall'):SetHeight(32)
-    F.content:SetHeight(y+52)
+    if #entries==0 then text('No recorded character matches. Clear filters or record more characters.',8,y,w-16);y=y+30 end
+    text('Role searches include capable classes and rank the last recorded role first. Offline data keeps its observation time.',4,y+8,w-8,'GameFontDisableSmall'):SetHeight(30)
+    F.content:SetHeight(y+46)
 end
 function F.Coverage()
     local w=F.width;F.coverageFilters=F.coverageFilters or {};local filter=F.coverageFilters
@@ -629,25 +761,24 @@ function F.Settings(c)
     paragraph('amazon.com/author/kenzieduckmoo\nTwitch / AO3 / Threads / Instagram / TikTok / YouTube: @KenzieDuckMoo\nBlueSky: @kenzieduckmoo.bsky.social\nGNU GPL v3. See LICENSE.')
     F.content:SetHeight(y+4)
 end
+
 function F.Render()
     if not F.frame or not F.db or F.rendering then return end
-    F.rendering=true
-    F.width=math.max(700,F.frame:GetWidth()-48);F.content:SetWidth(F.width)
-    F.Clear();F.dynamic=true;F.ApplyTheme()
-    if F.opacitySlider and F.tab~='settings' then F.opacitySlider:Hide();F.opacityValue:Hide() end
-    if F.notePanel and F.tab~='notes' then F.notePanel:Hide()end;if F.rosterSearch and F.tab~='roster' then F.rosterSearch:Hide()end
-    local current=F.current;F.selected=F.selected or current
-    local c=F.db.characters[F.selected]
-    local tab=F.tab or 'sheet'
-    for i,v in ipairs(tabs) do
-        local b=F.tabButtons[v[1]];local width=(F.frame:GetWidth()-24)/8
-        b:ClearAllPoints();b:SetPoint('TOPLEFT',12+(i-1)*width,-57);b:SetWidth(width-5);b._active=tab==v[1];local color=theme().accent;b:SetBackdropBorderColor(color[1],color[2],color[3],b._active and 1 or 0)
-    end
-    if tab=='roster' then F.Roster()
-    elseif tab=='census' then F.Census()
+    F.rendering=true;F.Layout();F.Clear();F.dynamic=true
+    if F.opacitySlider and F.tab~='settings'then F.opacitySlider:Hide();F.opacityValue:Hide()end
+    if F.notePanel and F.tab~='notes'then F.notePanel:Hide()end
+    if F.rosterSearch and F.tab~='roster'then F.rosterSearch:Hide()end
+    F.selected=F.selected or F.current;local c=F.db.characters[F.selected];local tab=F.tab or 'sheet'
+    for _,v in ipairs(tabs)do F.tabButtons[v[1]]._active=tab==v[1];if tab==v[1]then F.pageTitle:SetText(v[2])end end
+    F.pageContext:SetText(c and M.Plain((c.name or '?')..' - '..(c.realm or '?')..(F.selected==F.current and ' | This character'or ' | Recorded snapshot'))or 'Log into a character to start')
+    F.sideContext:SetText(c and M.Plain(c.name or '?')or 'No character');F.sideRealm:SetText(c and M.Plain(c.realm or '?')or '')
+    F.sideVersion:SetText('DuckMoo Media | v'..F.version)
+    if tab=='roster'then F.Roster()
+    elseif tab=='census'then F.Census()
     elseif c then
-        if tab=='skills' then F.Skills(c) elseif tab=='reps' then F.Reps(c) elseif tab=='notes' then F.Notes(c) elseif tab=='att' then F.Collection(c) elseif tab=='settings' then F.Settings(c) else F.Sheet(c)end
-    else text('Log into a character to start her folio.',8,8,F.width-16);F.content:SetHeight(50) end
+        if tab=='skills'then F.Skills(c)elseif tab=='reps'then F.Reps(c)elseif tab=='notes'then F.Notes(c)elseif tab=='att'then F.Collection(c)elseif tab=='settings'then F.Settings(c)else F.Sheet(c)end
+    else text('Log into a character to start the folio.',8,8,F.width-16);F.content:SetHeight(50)end
     F.ApplyTheme();F.dynamic=false;F.rendering=false
-    F.scroll:SetVerticalScroll(math.min(F.scroll:GetVerticalScroll(),math.max(0,F.content:GetHeight()-F.scroll:GetHeight())))
+    F.scroll:SetVerticalScroll(math.min(F.scroll:GetVerticalScroll(),math.max(0,F.content:GetHeight()-F.viewportHeight)))
 end
+
