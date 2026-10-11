@@ -125,12 +125,12 @@ function M.Census(db)
     end
     return result
 end
-function M.Plain(s) return tostring(s or ''):gsub('|','||') end
+function M.Plain(s) return (tostring(s or ''):gsub('|','||')) end
 M.CommonTags={'Main','Tank main','Healer main','Dual gatherer','Speed druid','Legacy farmer','Delves','Dungeon runner','Raid character','Timewalking','PvP','Leveling','Bank alt','Auction house','Crafter','Concentration alt','Recipe collector','Transmog collector','Mount farmer','Pet collector','Reputation farmer','Quest completion','Cloth gear','Bolt maker','Parked alt','Roleplay'}
 local oce={"Saurfang","Aman'Thul","Khaz'goroth","Barthilas","Caelestrasz","Dath'Remar","Nagrand","Dreadmaul","Frostmourne","Gundrak","Jubei'thos","Thaurissan"}
 local latam={'Drakkari',"Quel'Thalas",'Ragnaros'}
 local brazil={'Gallywix','Goldrinn','Nemesis','Tol Barad','Azralon'}
-function M.RealmKey(name) return (name or ''):lower():gsub('[%s%p]','') end
+function M.RealmKey(name) return ((name or ''):lower():gsub('[%s%p]','')) end
 local realmGroups={}
 for _,list in ipairs({{oce,'NA-OCE'},{latam,'NA-LATAM'},{brazil,'NA-BR'}}) do for _,name in ipairs(list[1]) do realmGroups[M.RealmKey(name)]=list[2] end end
 function M.RealmRegion(name,region)
@@ -140,5 +140,5 @@ end
 function M.IsSecondary(p,id) return (p.id or id)==185 or (p.id or id)==356 end
 function M.Spec(c) return ((c.level or 0)>=81 and c.heroSpec and c.heroSpec~='' and (c.heroSpec..' ') or '')..(c.specName or 'No spec recorded') end
 function M.Display(s)
-    return tostring(s or ''):gsub('|c[fF][fF][fF][fF][fF]7[dD]01',''):gsub('|c%x%x%x%x%x%x%x%x',''):gsub('|r',''):gsub('|H.-|h(.-)|h','%1'):gsub('|T.-|t',''):gsub('|A.-|a','')
+    return (tostring(s or ''):gsub('|c[fF][fF][fF][fF][fF]7[dD]01',''):gsub('|c%x%x%x%x%x%x%x%x',''):gsub('|r',''):gsub('|H.-|h(.-)|h','%1'):gsub('|T.-|t',''):gsub('|A.-|a',''))
 end

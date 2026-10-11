@@ -1,3 +1,45 @@
+# v0.5.2
+
+- Enable top-level window behavior and render-layer flattening on main windows and standalone dialogs. This keeps child panels in their window's stacking group instead of interleaving with another DuckMoo window.
+- Preserve internal control layering, approved layouts, palettes, data, calculations and saved opacity.
+- Add regression checks for main/dialog window configuration across page changes and mode switching. Actual overlap behavior requires a client check.
+
+# v0.5.1
+
+- Replace white Trans Pride surfaces with flag blue/pink, keeping exact flag stripes and white accents.
+- Replace Trans pride - pastel with Trans pride - dusk: deeper blue/pink, white text and accents. Preserve the existing saved preset key.
+- Give Light Mode warm peach, butter-yellow, coral and rose pastels; distinguish Classic Plum with wine/plum tones.
+- Preserve the approved 0.5.0 layout and all existing behavior. Check main and secondary text contrast across every revised surface.
+
+# v0.5.0
+
+- Replace horizontal tabs with grouped sidebar navigation and a persistent character chooser/header.
+- Rebuild the character sheet with a compact attribute grid and clearer identity, travel, next-step, collection, and plans cards. Preserve the approved next-step placement.
+- Rebuild the notebook with a category rail, responsive editor, autosaving, and offline character editing.
+- Rebuild the roster toolbar with expandable filters and saved views. Adapt page capacity to window height; keep realm headings with their rows and repeat them on continued pages.
+- Use the supplied Trans Pride flag colors exactly: #5BCEFA, #F5A9B8, #FFFFFF, pink, blue. Preserve the original purple and separately named Gunmetal palettes.
+- Preserve existing snapshots, tags, notes, profession coverage, reputation, ATT integrations, and minimap/slash access.
+- Add behavioral regression checks for supported window sizes, focused note entry, character switching, realm pagination, exact flag colors, and frame reuse. All Lua 5.1 checks pass; live Retail verification remains outstanding.
+
+# 0.4.2 repair
+
+- Restore the original purple preset, name gunmetal explicitly, and use dark blue/pink Trans Pride surfaces with light text. Retain the earlier pastel variant as a separate choice. Normalize string helpers to return text only.
+- Regression mocks now reject unintended extra native text arguments.
+
+# v0.4.1
+
+- Refine the default purple theme with charcoal surfaces and restrained accent colors; retain the earlier palette as Classic plum and preserve other themes.
+- Keep the accepted Where I left off placement between Travel and Collection milestones.
+- Expose a detached identity-only roster snapshot for optional read-only integration with Warband Planner.
+
+# v0.4.0
+
+- Add a prominent Where I left off card and autosaving notebook entry for each character.
+- Preserve resume notes across snapshots, reloads and offline character browsing; timestamp actual edits.
+- Add named roster views for filters, search, sort and flat/grouped preference, with save, recall and removal controls.
+- Keep existing notes, tags, profession coverage and ATT integration.
+- Add Lua 5.1 regression checks for the new persistence and UI callbacks.
+
 # v0.3.0
 
 - Added ATDART % Target above Legacy Dungeons: lowest completion fraction across legacy raids/dungeons, with random tie selection once per captured snapshot. Targets persist across browsing and reloads.

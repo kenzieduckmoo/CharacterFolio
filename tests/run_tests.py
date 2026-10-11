@@ -96,6 +96,8 @@ function CreateFrame(kind,name,parent,template)
 end
 function methods:CreateFontString(_,_,font) return CreateFrame('FontString',nil,self,font) end
 function methods:CreateTexture() return CreateFrame('Texture',nil,self) end
+function methods:SetToplevel(v)assert(type(v)=='boolean');self.topLevel=v end
+function methods:SetFlattensRenderLayers(v)assert(type(v)=='boolean');self.flattenLayers=v end
 function methods:SetFrameLevel(v) self.level=v end
 function methods:GetFrameLevel() return self.level or 3 end
 function methods:GetEffectiveScale() return 1 end
@@ -111,7 +113,7 @@ function methods:GetTop() return 900 end
 CURSOR_X=1220;CURSOR_Y=260
 function GetCursorPosition() return CURSOR_X,CURSOR_Y end
 function methods:ClearFocus() self.focus=false end
-function methods:SetText(text) self.text=text;if self.scripts.OnTextChanged then self.scripts.OnTextChanged(self,false)end end
+function methods:SetText(text,...) assert(select('#',...)==0,'SetText received an unintended extra argument');self.text=text;if self.scripts.OnTextChanged then self.scripts.OnTextChanged(self,false)end end
 Minimap=CreateFrame('Frame');Minimap:SetSize(140,140)
 ''')
 for filename in ['Model.lua','Core.lua','Coverage.lua','ATT.lua','UI.lua','Minimap.lua']:
@@ -165,7 +167,7 @@ print('PASS: snapshots, XP, rested, expansion skills, linked-profession guard, h
 F.Show();assert(F.tab=='sheet' and F.selected=='Player-1')
 assert(F.closeButton:GetFrameLevel()>F.headerDrag:GetFrameLevel(),'Close button is underneath the drag surface')
 F.closeButton:GetScript('OnClick')(F.closeButton);assert(not F.frame:IsShown());F.Show()
-assert(F.tabButtons.att.points[1][2]<F.tabButtons.notes.points[1][2] and F.tabButtons.reps.points[1][2]>F.tabButtons.census.points[1][2],'ATT and Reputations tab order was not swapped')
+assert(F.tabButtons.att.parent==F.sidebar and F.tabButtons.notes.points[1][3]>F.tabButtons.att.points[1][3] and F.tabButtons.reps.points[1][3]>F.tabButtons.census.points[1][3],'Character and warband sidebar groups are out of order')
 local function luminance(c)
  local function channel(v)return v<=.04045 and v/12.92 or ((v+.055)/1.055)^2.4 end
  return .2126*channel(c[1])+.7152*channel(c[2])+.0722*channel(c[3])
@@ -374,5 +376,129 @@ C_TradeSkillUI.GetChildProfessionInfos=function()return {}end
 C_TradeSkillUI.GetChildProfessionInfo=function()return {professionID=2539,professionName='Outland Tailoring',skillLevel=0,maxSkillLevel=0}end
 F.DiscoverProfession();assert(c.professions[197].expansions[2539].rank==75,'A temporary 0/0 profession window overwrote a trained rank')
 print('PASS: gathering expansion ownership, explicit unlearned checks and unavailable API preservation')
+''')
+lua.execute(r'''
+-- Resume notes survive snapshots, reloads and switching to an offline alt.
+F.selected='Player-1';local c=F.db.characters[F.selected];local general=c.notes.general
+assert(F.SaveResume(F.selected,'Continue the Outland recipe hunt'))
+local updated=c.resumeUpdatedAt;NOW=NOW+60
+F.SaveResume(F.selected,'Continue the Outland recipe hunt');assert(c.resumeUpdatedAt==updated)
+F.Snapshot(true);assert(c.notes.resume=='Continue the Outland recipe hunt' and c.notes.general==general)
+F.tab='sheet';F.Render()
+local clicked=false
+for _,b in ipairs(frames)do
+ if b.kind=='Button' and b:IsShown() and b:GetText()=='Edit next step' then b:GetScript('OnClick')();clicked=true;break end
+end
+assert(clicked and F.tab=='notes' and F.notePanel.section=='resume')
+F.notePanel.edit:SetText('One small next step');assert(c.notes.resume=='One small next step')
+F.selected='Alt1';F.Render();F.notePanel.edit:SetText('Pick up supplies')
+assert(F.db.characters.Alt1.notes.resume=='Pick up supplies' and c.notes.resume=='One small next step')
+F.filters={class='PRIEST',profession='Tailoring',expansion=2539,sort='rested',search='Void',junk={}};F.flatRoster=true
+assert(F.SaveRosterView('  Cloth crafters  ') and not F.SaveRosterView('   '))
+F.filters.class='MAGE';assert(F.db.settings.rosterViews['Cloth crafters'].filters.class=='PRIEST')
+DuckMooFolioDB=F.Clean(F.db);F.Init();assert(F.db.characters['Player-1'].notes.resume=='One small next step')
+assert(F.ApplyRosterView('Cloth crafters') and F.filters.class=='PRIEST' and F.filters.expansion==2539 and F.flatRoster and F.page==1 and not F.filters.junk)
+F.filters.search='Changed';assert(F.db.settings.rosterViews['Cloth crafters'].filters.search=='Void')
+assert(not F.ApplyRosterView('Missing'))
+F.tab='roster';F.Render();F.RosterViewEditor();F.viewEditor.edit:SetText('Second view');F.viewEditor.save:GetScript('OnClick')()
+assert(F.db.settings.rosterViews['Second view'] and not F.viewEditor:IsShown())
+F.RosterViewPicker(false);F.choice.rows[1]:GetScript('OnClick')();assert(F.filters.search=='Void')
+F.RosterViewPicker(true);F.choice.rows[1]:GetScript('OnClick')();assert(not F.db.settings.rosterViews['Cloth crafters'] and F.db.settings.rosterViews['Second view'])
+F.Render();local count=frameCount;for i=1,20 do F.Render()end;assert(frameCount==count,'Saved-view controls leaked frames')
+print('PASS: resume editing, offline alt isolation, unchanged timestamps, snapshot/reload preservation, named filter copies, view editor/chooser/removal and frame reuse')
+''')
+lua.execute(r'''
+local exported=F.ExportRoster();local guid=next(exported);local name=F.db.characters[guid].name
+exported[guid].name='Altered copy';assert(F.db.characters[guid].name==name and not exported[guid].notes)
+assert(F.Themes.plum and F.Themes.gunmetal and F.Themes.purple.bg[1]==.065)
+assert(select('#',F.Model.Plain('Text|with bars'))==1 and select('#',F.Model.Display('|cffffffffText|r'))==1 and select('#',F.Model.RealmKey('Moon Guard'))==1)
+local function luminance(color)
+ local function channel(v)return v<=.04045 and v/12.92 or ((v+.055)/1.055)^2.4 end
+ return .2126*channel(color[1])+.7152*channel(color[2])+.0722*channel(color[3])
+end
+local t=F.Themes.trans
+for _,surface in ipairs({t.bg,t.panel,t.button,t.hover})do
+ local a,b=luminance(t.text),luminance(surface);assert((math.max(a,b)+.05)/(math.min(a,b)+.05)>=4.5,'Trans Pride text contrast is insufficient')
+end
+print('PASS: optional read-only roster export and classic plum theme preservation')
+''')
+lua.execute(r'''
+-- The complete redesign remains usable at supported window sizes, preserves
+-- editing scope, and never strands a realm heading apart from its characters.
+F.filters={};F.flatRoster=false;F.db.settings.collapsed={};F.selected='Player-1'
+for _,size in ipairs({{940,560},{1040,740},{1320,900}})do
+ F.frame:SetSize(size[1],size[2])
+ for _,tab in ipairs({'sheet','notes','skills','reps','att','roster','census','settings'})do
+  F.tab=tab;F.Render()
+  assert(F.width+194<=size[1]-20 and F.viewportHeight+84<=size[2]-20,'Content exceeds the window')
+  assert(F.sidebar:GetHeight()-96>423,'Character chooser overlaps navigation')
+  assert(F.tabButtons[tab]._active,'Selected page lost its sidebar highlight')
+ end
+ F.tab='notes';F.Render()
+ assert(F.notePanel.paper:GetWidth()==F.width-176 and F.notePanel.scroll:GetHeight()>=260)
+ F.notePanel.edit:SetFocus();F.Render();assert(F.notePanel.edit:HasFocus(),'Rerender interrupted note entry')
+ F.notePanel.edit:ClearFocus()
+ for _,expanded in ipairs({false,true})do
+  F.tab='roster';F.rosterFiltersOpen=expanded;F.page=1;F.Render()
+  local seen={}
+  for _,page in ipairs(F.rosterPages)do
+   assert(#page<=F.rosterPageSize)
+   for index,row in ipairs(page)do
+    if row.header and not F.db.settings.collapsed[row.header]then
+     assert(page[index+1] and not page[index+1].header,'Realm heading stranded on a page')
+    elseif row.guid then
+     assert(not seen[row.guid],'Character appeared twice in roster pagination');seen[row.guid]=true
+    end
+   end
+  end
+  local count=0;for _ in pairs(seen)do count=count+1 end
+  assert(count==#F.filteredRoster,'Roster pagination omitted characters')
+ end
+end
+F.tab='notes';F.noteSection='general';F.Render();F.PickCharacter()
+local chosen=F.choice.options[1].id;F.choice.rows[1]:GetScript('OnClick')()
+assert(F.tab=='notes' and F.selected==chosen and F.notePanel.guid==chosen,'Character chooser lost the notebook scope')
+F.notePanel.edit:SetText('Offline editing stays with this character')
+assert(F.db.characters[chosen].notes.general=='Offline editing stays with this character')
+local expected={{91,206,250},{245,169,184},{255,255,255},{245,169,184},{91,206,250}}
+for i,color in ipairs(expected)do for channel,value in ipairs(color)do assert(math.abs(F.TransFlag[i][channel]*255-value)<.00001,'Flag color changed')end end
+F.db.settings.theme='purple';F.tab='sheet';F.Render()
+local b=F.tabButtons.sheet;b:GetScript('OnEnter')(b);b:GetScript('OnLeave')(b)
+assert(b._surfaceColor[1]==F.Themes.purple.hover[1],'Hover removed the active-page highlight')
+for _,tab in ipairs({'sheet','notes','skills','reps','att','roster','census','settings'})do F.tab=tab;F.Render()end
+local count=frameCount
+for i=1,3 do for _,tab in ipairs({'sheet','notes','skills','reps','att','roster','census','settings'})do F.tab=tab;F.Render()end end
+assert(frameCount==count,'Redesigned pages leaked native frames')
+print('PASS: supported window sizes, all sidebar pages, uninterrupted note entry, offline character switching, complete realm pagination, exact flag colors and frame reuse')
+''')
+lua.execute(r'''
+local function lum(c)
+ local function ch(v)return v<=.04045 and v/12.92 or ((v+.055)/1.055)^2.4 end
+ return .2126*ch(c[1])+.7152*ch(c[2])+.0722*ch(c[3])
+end
+for _,key in ipairs({'trans','translight','light','plum'})do
+ local t=F.Themes[key]
+ for _,surface in ipairs({t.bg,t.sidebar,t.panel,t.button,t.hover})do
+  for _,foreground in ipairs({t.text,t.muted})do
+   local a,b=lum(surface),lum(foreground)
+   assert((math.max(a,b)+.05)/(math.min(a,b)+.05)>=4.5,key..' has unreadable text')
+  end
+ end
+ F.db.settings.theme=key;F.tab='notes';F.Render()
+ assert(F.notePanel.paper._surfaceColor[1]==t.panel[1],'Notebook ignored its selected preset')
+end
+assert(F.Themes.trans.bg[1]==91/255 and F.Themes.trans.panel[1]==245/255)
+assert(F.Themes.translight.text[1]==1 and F.Themes.translight.name=='Trans pride - dusk')
+assert(F.Themes.plum.bg[1]~=F.Themes.purple.bg[1],'Plum still duplicates Purple')
+print('PASS: revised palette contrast for primary/secondary text, saved preset keys and notebook theme application')
+''')
+lua.execute(r'''
+for _,view in ipairs({'sheet','notes','skills','reps','att','roster','census','settings'})do F.tab=view;F.Render();assert(F.frame.topLevel and F.frame.flattenLayers)end
+local count=0
+for _,f in ipairs(frames)do
+ if f.parent==UIParent and f._round then assert(f.topLevel and f.flattenLayers,'Standalone window lost grouped stacking');count=count+1 end
+end
+assert(count>=4,'Window stacking was not checked on dialogs')
+print('PASS: main and dialog window render groups survive page and mode changes')
 ''')
 print('All tests passed. Actual Retail client verification is still required.')

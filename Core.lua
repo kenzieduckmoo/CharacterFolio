@@ -1,5 +1,6 @@
 local addon,F=...
-F.name=addon;F.version='0.3.0';F.Model=F.Model or {}
+DuckMooFolio=F
+F.name=addon;F.version='0.5.2';F.Model=F.Model or {}
 local M=F.Model
 function F.Safe(fn,...)
     if type(fn)~='function' then return nil end
@@ -23,11 +24,19 @@ function F.Clean(value,depth)
     end
 end
 function F.Now() return S(GetServerTime) or time() end
+function F.ExportRoster()
+    local out={}
+    for guid,c in pairs(F.db and F.db.characters or {})do
+        out[guid]=F.Clean({name=c.name,realm=c.realm,class=c.class,className=c.className,lastSeen=c.lastSeen})
+    end
+    return out
+end
 function F.Print(message) print('|cffbf8beaDuckMoo Folio:|r '..message) end
 function F.Init()
     DuckMooFolioDB=DuckMooFolioDB or {}
     F.db=DuckMooFolioDB;local db=F.db
     db.version=1;db.characters=db.characters or {};db.settings=db.settings or {};db.settings.collapsed=db.settings.collapsed or {};db.settings.realmRegions=db.settings.realmRegions or {}
+    db.settings.rosterViews=db.settings.rosterViews or {}
     db.settings.sections=db.settings.sections or {};db.settings.theme=db.settings.theme or 'purple';db.settings.backgroundAlpha=tonumber(db.settings.backgroundAlpha) or .92
     for _,c in pairs(db.characters) do
         c.notes=c.notes or {};c.tags=c.tags or {};c.reputations=c.reputations or {};c.professions=c.professions or {};c.professions[794]=nil
@@ -35,6 +44,37 @@ function F.Init()
         c.region=region;c.realmRegion=M.RealmRegion(c.realm,region)
     end
     F.filters={};F.tab='sheet';F.page=1
+end
+-- Store only supported filter values; drafts and saved views never share tables.
+local viewKeys={class=true,role=true,faction=true,region=true,profession=true,expansion=true,reputation=true,tag=true,sort=true,realm=true,search=true}
+local function viewFilters(source)
+    local out={}
+    for key in pairs(viewKeys) do
+        local value=source and source[key]
+        if type(value)=='string' or type(value)=='number' then out[key]=value end
+    end
+    return out
+end
+function F.SaveRosterView(name)
+    if type(name)~='string' then return false end
+    name=name:match('^%s*(.-)%s*$')
+    if name=='' or #name>60 then return false end
+    F.db.settings.rosterViews[name]={filters=viewFilters(F.filters),flat=not not F.flatRoster}
+    return true
+end
+function F.ApplyRosterView(name)
+    local view=F.db.settings.rosterViews[name]
+    if type(view)~='table' then return false end
+    F.filters=viewFilters(view.filters);F.flatRoster=not not view.flat;F.page=1
+    if F.rosterSearch then F.rosterSearch:ClearFocus();F.rosterSearch:SetText(F.filters.search or '') end
+    return true
+end
+function F.SaveResume(guid,text)
+    local c=F.db.characters[guid]
+    if not c or type(text)~='string' then return false end
+    c.notes=c.notes or {}
+    if c.notes.resume~=text then c.notes.resume=text;c.resumeUpdatedAt=F.Now() end
+    return true
 end
 function F.Current()
     local guid=S(UnitGUID,'player');if not guid or not F.db then return nil end
