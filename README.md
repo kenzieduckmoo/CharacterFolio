@@ -1,6 +1,6 @@
 # DuckMoo Services: Character Folio
 
-**v0.5.2, by DuckMoo Media**
+**v0.5.3, by DuckMoo Media**
 
 An adventurer's binder for your alt army: character sheets, searchable warband information, personal plans, and collector field notes. A persistent sidebar, compact character cards, searchable roster, and an autosaving notebook. The original purple palette remains available; Trans Pride uses the exact blue, pink, and white of the supplied flag.
 
@@ -61,7 +61,7 @@ This release covers the sheet/roster/notebook foundation. It is not a complete r
 Install `lupa==2.8` and run:
 
 ```sh
-python3 tests/run_tests.py
+python3 DuckMooFolio/tests/run_tests.py
 ```
 
 Tests run actual addon code under Lua 5.1 with mocked Blizzard frames/APIs. Coverage includes snapshots, concentration-independent note storage, exact XP sorting, rested display, expansion skills, linked profession rejection, collapsed reputation restoration, combined filters over 400 alts, healer-role prioritization, all UI pages, note isolation/persistence, frame reuse, chooser actions, minimap/slash behavior, ATT absent/not-ready states, read-only instance/quest ranking, deduplication, capital exclusion, combat deferral, and secret-value sanitization. Regression checks also cover continuous keyboard focus, roster paging, realm expansion, tag selection/custom tags, notebook category switching, theme opacity, resize cursor deltas, namespaced specialization APIs, hero talents, realm mapping, ATT color-code cleanup, and persisted snapshots through reload/alt switches and unavailable/logout APIs. Real Retail client verification is still required.
@@ -108,6 +108,6 @@ Trans Pride uses flag blue as the main background, pink panels, blue buttons, an
 Main windows and standalone dialogs enable native top-level window behavior and render-layer flattening so their child panels stack as a single window when overlapping other DuckMoo windows. Clicking a window brings it forward. Layouts, colors, reset logic, data and chosen opacity remain unchanged. Actual overlapping-window rendering requires a Retail client check.
 
 
-## Repository and packaging
+## Bundled user guide
 
-Future development lives in [kenzieduckmoo/CharacterFolio](https://github.com/kenzieduckmoo/CharacterFolio). From the repository root, install test dependencies with `python3 -m pip install -r requirements-dev.txt`, run `python3 tests/run_tests.py`, and build with `python3 tools/package.py`. The installable ZIP is written to `dist/` and always contains the **DuckMooFolio** folder. Use that folder name when installing, regardless of the repository name. GitHub runs the regression checks and package validation on main-branch pushes and pull requests.
+See USER-GUIDE.txt for current installation, commands, collected data, storage, Nexus integration, troubleshooting and limitations. All TOCs use the DuckMoo Media category.
